@@ -7,12 +7,11 @@ import {
   type PublicPcStatusResponse,
   type PublicRoomStatusResponse,
 } from '@gewis/aurora-api-client';
-import RoomStatusPanel from './components/RoomStatusPanel';
-import CoffeeStatus from './components/CoffeeStatus';
 import PcStatusGrid from './components/PcStatusGrid';
+import RoomStatusBlocks from './components/RoomStatusBlocks';
 
 // Same origin: the dev server (vite) and the production nginx both proxy /api
-// to core, so the browser never talks to core directly and CORS is moot.
+// to core, so the browser never talks to core and CORS is moot.
 client.setConfig({ baseUrl: '/api' });
 
 const POLL_MS = 30_000;
@@ -23,12 +22,16 @@ interface InfoState {
   failed: boolean;
 }
 
+type Tab = 'room' | 'computers';
+
 /**
- * The public info page. Polls the two anonymized public endpoints every 30 s
- * (matching the 5-minute staleness of the PC data and well inside how fast a
- * room status flips); a failed poll keeps the last data on screen.
+ * The public info page, styled after the legacy info.gewis.nl mobile site:
+ * a "GEWIS Status" header, a Room/Computers tab bar and white content blocks.
+ * Polls the anonymized public endpoints every 30 s; a failed poll keeps the
+ * last data on screen.
  */
 export default function App() {
+  const [tab, setTab] = useState<Tab>('room');
   const [info, setInfo] = useState<InfoState>({ roomStatus: null, pcUsage: null, failed: false });
 
   useEffect(() => {
@@ -56,18 +59,56 @@ export default function App() {
     };
   }, []);
 
+  const loading = info.roomStatus === null && info.pcUsage === null && !info.failed;
+
   return (
-    <div className="flex min-h-screen flex-col gap-6 bg-neutral-950 p-6">
-      {info.roomStatus === null && info.pcUsage === null ? (
-        <div className="flex flex-1 items-center justify-center font-raleway text-4xl text-white/60">
-          {info.failed ? 'GEWIS info unavailable' : 'Loading...'}
+    <div className="min-h-screen bg-[#dddddd] font-roboto text-[14px] text-[#333333]">
+      <div id="header" className="bg-white text-center text-[16px] leading-[30px]">
+        <span className="text-[#333333]">GEWIS Status</span>
+      </div>
+
+      <div className="flex justify-center gap-4 border-b border-[#e8e8e8] bg-white text-[12px]">
+        <button
+          type="button"
+          onClick={() => setTab('room')}
+          className={`px-1 pt-2 pb-1 focus-visible:outline-none ${
+            tab === 'room'
+              ? 'border-b-[3px] border-[#46b98a] font-bold text-[#333333]'
+              : 'text-[#696969] hover:border-b-[3px] hover:border-[#46b98a] hover:text-[#46b98a]'
+          }`}
+        >
+          Room
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('computers')}
+          className={`px-1 pt-2 pb-1 focus-visible:outline-none ${
+            tab === 'computers'
+              ? 'border-b-[3px] border-[#46b98a] font-bold text-[#333333]'
+              : 'text-[#696969] hover:border-b-[3px] hover:border-[#46b98a] hover:text-[#46b98a]'
+          }`}
+        >
+          Computers
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="block mx-auto mt-10 max-w-[350px] bg-white p-6 text-center">Loading...</div>
+      ) : info.failed && info.roomStatus === null && info.pcUsage === null ? (
+        <div className="block mx-auto mt-10 max-w-[350px] bg-white p-6 text-center">
+          GEWIS info unavailable
+        </div>
+      ) : tab === 'room' ? (
+        <div className="mx-auto flex max-w-md flex-col items-center p-1" id="page_info">
+          {info.roomStatus && <RoomStatusBlocks status={info.roomStatus} />}
         </div>
       ) : (
-        <>
-          <RoomStatusPanel status={info.roomStatus} />
-          <CoffeeStatus status={info.roomStatus?.coffeeStatus ?? 10} />
-          <PcStatusGrid pcs={info.pcUsage} />
-        </>
+        <div className="mx-auto flex max-w-md flex-col items-center p-1" id="page_computers">
+          <div className="mt-2 w-full max-w-[350px] bg-white p-6 text-left">
+            <h1 className="mb-4 border-b-2 border-[#dddddd] pb-2 font-bold">Computers</h1>
+            <PcStatusGrid pcs={info.pcUsage} />
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
-import { Get, Route, Tags } from 'tsoa';
+import { Get, Request, Route, Tags } from 'tsoa';
 import { Controller } from '@tsoa/runtime';
+import type { Request as ExpressRequest } from 'express';
 import { injectable } from 'inversify';
 import { Security } from '../../../auth';
 import { SecurityNames } from '../../../../helpers/security';
@@ -24,13 +25,18 @@ export class PublicInfoController extends Controller {
   private publicInfoService = new PublicInfoService();
 
   /**
-   * Whether the association room is open, who is responsible, today's beer time
-   * and the coffee machine state.
+   * Whether the association room is open, today's beer time, the coffee machine
+   * state and what is currently playing. Responsibles are deliberately NOT
+   * exposed: that information was not public before either.
    */
   @Security(SecurityNames.PUBLIC)
   @Get('room-status')
-  public async getPublicRoomStatus(): Promise<PublicRoomStatusResponse> {
-    return this.publicInfoService.getPublicRoomStatus();
+  public async getPublicRoomStatus(
+    @Request() req: ExpressRequest,
+  ): Promise<PublicRoomStatusResponse> {
+    // Behind the app's own nginx; the legacy page used the same forwarded-for rule.
+    const forwardedFor = (req.headers['x-forwarded-for'] as string | undefined) ?? req.ip;
+    return this.publicInfoService.getPublicRoomStatus(forwardedFor ?? null);
   }
 
   /** Anonymized PC usage: per-PC state with board/keyholder symbols only. */

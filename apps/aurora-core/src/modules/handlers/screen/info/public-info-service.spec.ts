@@ -1,25 +1,26 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import PublicInfoService from './public-info-service';
-import { PcStatusResponse, PcUser } from './pc-usage-service';
-import { ResponsibleResponse, RoomStatusResponse } from './info-status-service';
+import PlayingSongService from './playing-song-service';
+import { PcUser, PcStatusResponse } from './pc-usage-service';
+import { RoomStatusResponse } from './info-status-service';
+import SpotifyTrackHandler from '../../../spotify/spotify-track-handler';
 import { PcStatusType } from './entities/pc-status';
 
-function responsible(overrides: Partial<ResponsibleResponse>): ResponsibleResponse {
-  return {
-    memberId: 123456,
-    name: 'Secret Name',
-    isBoard: true,
-    isCandidateBoard: false,
-    isKeyholder: false,
-    photoUrl: 'https://example.com/photo.png',
-    ...overrides,
-  };
-}
+vi.mock('../../../spotify/spotify-track-handler');
 
-function roomStatus(overrides: Partial<RoomStatusResponse>): RoomStatusResponse {
+    function roomStatus(overrides: Partial<RoomStatusResponse>): RoomStatusResponse {
   return {
     open: true,
-    responsible: [responsible({}), responsible({ memberId: null, name: 'Chesty', isBoard: false, isKeyholder: true })],
+    responsible: [
+      {
+        memberId: 123456,
+        name: 'Secret Name',
+        isBoard: true,
+        isCandidateBoard: false,
+        isKeyholder: false,
+        photoUrl: 'https://example.com/photo.png',
+      },
+    ],
     beerTime: '16:30',
     lastCall: '19:00',
     closedMessage: null,
@@ -45,40 +46,38 @@ function pcStatus(overrides: Partial<PcStatusResponse>): PcStatusResponse {
 
 describe('PublicInfoService', () => {
   describe('toPublicRoomStatus', () => {
-    it('drops memberId and photoUrl from responsibles', () => {
-      const result = PublicInfoService.toPublicRoomStatus(roomStatus({}));
+    it('never exposes anything about the responsibles: that was not public before', () => {
+      const result = PublicInfoService.toPublicRoomStatus(roomStatus({}), null);
 
-      for (const person of result.responsible) {
-        expect(JSON.stringify(person)).not.toContain('memberId');
-        expect(JSON.stringify(person)).not.toContain('photoUrl');
-        expect(person).not.toHaveProperty('memberId');
-        expect(person).not.toHaveProperty('photoUrl');
-      }
+      const serialized = JSON.stringify(result);
+      expect(serialized).not.toContain('responsible');
+      expect(serialized).not.toContain('Secret Name');
+      expect(serialized).not.toContain('123456');
+      expect(JSON.parse(serialized)).not.toHaveProperty('responsible');
     });
 
-    it('keeps name and role flags so the page can show names next to icons', () => {
-      const [board, keyholder] = PublicInfoService.toPublicRoomStatus(roomStatus({})).responsible;
-
-      expect(board).toStrictEqual({ name: 'Secret Name', isBoard: true, isCandidateBoard: false, isKeyholder: false });
-      expect(keyholder).toStrictEqual({ name: 'Chesty', isBoard: false, isCandidateBoard: false, isKeyholder: true });
-    });
-
-    it('passes through the daily and closing state', () => {
-      const source = roomStatus({});
-      expect(PublicInfoService.toPublicRoomStatus(source)).toMatchObject({
-        open: source.open,
-        beerTime: source.beerTime,
-        lastCall: source.lastCall,
-        closedMessage: source.closedMessage,
-        coffeeStatus: source.coffeeStatus,
+    it('keeps the room state fields the page needs', () => {
+      const status = roomStatus({ beerTime: null, lastCall: null, closedMessage: 'Empty' });
+      expect(PublicInfoService.toPublicRoomStatus(status, null)).toStrictEqual({
+        open: true,
+        beerTime: null,
+        lastCall: null,
+        closedMessage: 'Empty',
+        coffeeStatus: 4,
+        playingSong: null,
       });
+    });
+
+    it('passes through the playing-song display string', () => {
+      const result = PublicInfoService.toPublicRoomStatus(roomStatus({}), '♫ Some Artist - Some Track');
+      expect(result.playingSong).toBe('♫ Some Artist - Some Track');
     });
   });
 
   describe('toPublicPcStatus', () => {
-    it('keeps only the symbol per user', () => {
+    it('keeps the symbol per user', () => {
       const result = PublicInfoService.toPublicPcStatus(
-        pcStatus({ users: [pcUser({}), pcUser({ memberId: null, name: 'Other Person', symbol: '' })] }),
+        pcStatus({ users: [pcUser({}), pcUser({ symbol: '' })] }),
       );
 
       expect(result.users).toStrictEqual([{ symbol: '★' }, { symbol: '' }]);
@@ -101,7 +100,7 @@ describe('PublicInfoService', () => {
       expect(serialized).not.toContain('name');
     });
 
-    it('passes through the per-PC technical state', () => {
+    it('passes through the per-PC technical state including the lock time', () => {
       const locked = pcStatus({ remote: true, lockedAt: '2026-09-29T12:00:00Z', status: PcStatusType.LOCKED });
       expect(PublicInfoService.toPublicPcStatus(locked)).toMatchObject({
         pcId: '1',
@@ -109,6 +108,39 @@ describe('PublicInfoService', () => {
         lockedAt: '2026-09-29T12:00:00Z',
         status: PcStatusType.LOCKED,
       });
+    });
+  });
+
+  describe('PlayingSongService', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it('returns null when nothing is playing', () => {
+      vi.spyOn(SpotifyTrackHandler, 'getInstance').mockReturnValue(
+        { getCurrentlyPlaying: () => null } as unknown as SpotifyTrackHandler,
+      );
+      const service = new PlayingSongService();
+      expect(service.getPlayingSong('131.155.0.1')).toBeNull();
+    });
+
+    it('shows artist and title to TU/e visitors', () => {
+      vi.spyOn(SpotifyTrackHandler, 'getInstance').mockReturnValue(
+        { getCurrentlyPlaying: () => ({ artist: 'Some Artist', title: 'Some Track' }) } as unknown as SpotifyTrackHandler,
+      );
+      const stub: unknown = null;
+      void stub;
+      const service = new PlayingSongService();
+      expect(service.getPlayingSong('131.155.71.116')).toBe('♫ Some Artist - Some Track');
+    });
+
+    it('hides the artist and track from outside TU/e', () => {
+      vi.spyOn(SpotifyTrackHandler, 'getInstance').mockReturnValue(
+        { getCurrentlyPlaying: () => ({ artist: 'Some Artist', title: 'Some Track' }) } as unknown as SpotifyTrackHandler,
+      );
+      const stub: unknown = null;
+      void stub;
+      const service = new PlayingSongService();
+      expect(service.getPlayingSong('8.8.8.8')).toBe('♫ Playing music');
+      expect(service.getPlayingSong(null)).toBe('♫ Playing music');
     });
   });
 });

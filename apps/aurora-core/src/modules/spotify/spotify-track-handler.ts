@@ -103,6 +103,17 @@ export default class SpotifyTrackHandler {
   }
 
   /**
+   * What the association room is currently playing, or null when no Spotify
+   * user is connected or nothing is playing. Used by the public info page.
+   */
+  public getCurrentlyPlaying(): { artist: string; title: string } | null {
+    if (!this.initialized) return null;
+    const track = SpotifyTrackHandler.playingTrack(this.playState);
+    if (!track || !this.playState?.is_playing) return null;
+    return { artist: track.artists.map((a) => a.name).join(', '), title: track.name };
+  }
+
+  /**
    * Skips to the next track.
    */
   public async skipToNext() {

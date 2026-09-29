@@ -3870,41 +3870,10 @@
 				"type": "object",
 				"additionalProperties": false
 			},
-			"PublicResponsible": {
-				"description": "What the public status page may show about a responsible person: the name and\nthe role flags that drive the star/key icons, but never the membership number\nor the photo.",
-				"properties": {
-					"name": {
-						"type": "string"
-					},
-					"isBoard": {
-						"type": "boolean"
-					},
-					"isCandidateBoard": {
-						"type": "boolean"
-					},
-					"isKeyholder": {
-						"type": "boolean"
-					}
-				},
-				"required": [
-					"name",
-					"isBoard",
-					"isCandidateBoard",
-					"isKeyholder"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
 			"PublicRoomStatusResponse": {
 				"properties": {
 					"open": {
 						"type": "boolean"
-					},
-					"responsible": {
-						"items": {
-							"$ref": "#/components/schemas/PublicResponsible"
-						},
-						"type": "array"
 					},
 					"beerTime": {
 						"type": "string",
@@ -3921,15 +3890,20 @@
 					"coffeeStatus": {
 						"type": "number",
 						"format": "double"
+					},
+					"playingSong": {
+						"type": "string",
+						"nullable": true,
+						"description": "Display string for whatever the board account is currently playing, or null\nwhen unknown. Calculated once by PlayingSongService; TU/e visitors get the\nartist and title, everybody else a generic \"playing music\"."
 					}
 				},
 				"required": [
 					"open",
-					"responsible",
 					"beerTime",
 					"lastCall",
 					"closedMessage",
-					"coffeeStatus"
+					"coffeeStatus",
+					"playingSong"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -12461,7 +12435,7 @@
 						}
 					}
 				},
-				"description": "Whether the association room is open, who is responsible, today's beer time\nand the coffee machine state.",
+				"description": "Whether the association room is open, today's beer time, the coffee machine\nstate and what is currently playing. Responsibles are deliberately NOT\nexposed: that information was not public before either.",
 				"tags": [
 					"Public"
 				],

@@ -1,26 +1,20 @@
 import InfoStatusService, { RoomStatusResponse } from './info-status-service';
+import PlayingSongService from './playing-song-service';
 import PcUsageService, { PcStatusResponse } from './pc-usage-service';
 import { PcStatusType } from './entities/pc-status';
 
-/**
- * What the public status page may show about a responsible person: the name and
- * the role flags that drive the star/key icons, but never the membership number
- * or the photo.
- */
-export interface PublicResponsible {
-  name: string;
-  isBoard: boolean;
-  isCandidateBoard: boolean;
-  isKeyholder: boolean;
-}
-
 export interface PublicRoomStatusResponse {
   open: boolean;
-  responsible: PublicResponsible[];
   beerTime: string | null;
   lastCall: string | null;
   closedMessage: string | null;
   coffeeStatus: number;
+  /**
+   * Display string for whatever the board account is currently playing, or null
+   * when unknown. Calculated once by PlayingSongService; TU/e visitors get the
+   * artist and title, everybody else a generic "playing music".
+   */
+  playingSong: string | null;
 }
 
 /**
@@ -49,9 +43,14 @@ export interface PublicPcStatusResponse {
 export default class PublicInfoService {
   private infoStatusService = new InfoStatusService();
   private pcUsageService = new PcUsageService();
+  private playingSongService = new PlayingSongService();
 
-  public async getPublicRoomStatus(): Promise<PublicRoomStatusResponse> {
-    return PublicInfoService.toPublicRoomStatus(await this.infoStatusService.getRoomStatus());
+  public async getPublicRoomStatus(visitorIp: string | null): Promise<PublicRoomStatusResponse> {
+    const [status, playingSong] = await Promise.all([
+      this.infoStatusService.getRoomStatus(),
+      this.playingSongService.getPlayingSong(visitorIp),
+    ]);
+    return PublicInfoService.toPublicRoomStatus(status, playingSong);
   }
 
   public async getPublicPcUsage(): Promise<PublicPcStatusResponse[]> {
@@ -59,21 +58,17 @@ export default class PublicInfoService {
     return pcs.map((pc) => PublicInfoService.toPublicPcStatus(pc));
   }
 
-  public static toPublicRoomStatus(status: RoomStatusResponse): PublicRoomStatusResponse {
+  public static toPublicRoomStatus(
+    status: RoomStatusResponse,
+    playingSong: string | null,
+  ): PublicRoomStatusResponse {
     return {
       open: status.open,
-      responsible: status.responsible.map(
-        (r): PublicResponsible => ({
-          name: r.name,
-          isBoard: r.isBoard,
-          isCandidateBoard: r.isCandidateBoard,
-          isKeyholder: r.isKeyholder,
-        }),
-      ),
       beerTime: status.beerTime,
       lastCall: status.lastCall,
       closedMessage: status.closedMessage,
       coffeeStatus: status.coffeeStatus,
+      playingSong,
     };
   }
 

@@ -14,7 +14,7 @@ beforeAll(async () => {
 /**
  * Seeds a keyholder the tests can point the room-status and pc-usage payloads at.
  */
-export async function seedKeyholder(memberId: number, name: string, isBoard: boolean): Promise<void> {
+async function seedKeyholder(memberId: number, name: string, isBoard: boolean): Promise<void> {
   const repo = getDataSource().getRepository(Keyholder);
   const existing = await repo.findOneBy({ memberId });
   if (existing) {
@@ -25,7 +25,7 @@ export async function seedKeyholder(memberId: number, name: string, isBoard: boo
 }
 
 describe('GET /api/public/info/room-status', () => {
-  it('fails without any auth', async () => {
+  it('fails without any auth on the internal endpoint', async () => {
     // ACT
     const res = await testApp.unauthorizedAgent.get('/api/handler/screen/info/room-status');
 
@@ -33,9 +33,10 @@ describe('GET /api/public/info/room-status', () => {
     expectApiError(res, 401);
   });
 
-  it('returns 200 without authentication and strips memberId/photoUrl', async () => {
+  it('returns 200 without authentication and exposes no responsibles', async () => {
     // ARRANGE
     await seedKeyholder(123456, 'Secret Openhouder', true);
+
     const admin = await testApp.authorizedAgent
       .put('/api/handler/screen/info/room-status')
       .send({ open: true, responsible1MemberId: 123456, beerTime: '16:30' });
@@ -46,20 +47,28 @@ describe('GET /api/public/info/room-status', () => {
 
     // ASSERT
     expect(publicRes.status).toBe(200);
-    expect(publicRes.body.open).toBe(true);
-    expect(publicRes.body.responsible).toHaveLength(1);
-    expect(publicRes.body.responsible[0]).toStrictEqual({
-      name: 'Secret Openhouder',
-      isBoard: true,
-      isCandidateBoard: false,
-      isKeyholder: false,
-    });
-    // Names are public (legacy openhouders were shown too); only the numeric
-    // identity and photo must never appear.
+
+    // Responsibles were never public on the old page, so the field is absent
+    // entirely, not merely reduced.
     const serialized = JSON.stringify(publicRes.body);
+    expect(serialized).not.toContain('responsible');
+    expect(serialized).not.toContain('Secret Openhouder');
     expect(serialized).not.toContain('memberId');
     expect(serialized).not.toContain('photoUrl');
-    expect(serialized).not.toContain('123456');
+    expect(publicRes.body.responsible).toBeUndefined();
+
+    // The rest of the room state is still there (other specs share the row, so
+    // only assert on fields being present, not on exact daily values).
+    expect(publicRes.body).toMatchObject({
+      open: true,
+      beerTime: '16:30',
+      lastCall: null,
+      closedMessage: null,
+      coffeeStatus: expect.anything(),
+      playingSong: null,
+    });
+    // LastFM is not configured in the integration env, so the field exists but is null.
+    expect(publicRes.body.playingSong).toBeNull();
   });
 });
 
@@ -80,6 +89,7 @@ describe('GET /api/public/info/pc-usage', () => {
         pcs: [
           { pcId: '1', memberId: 123456, name: 'Secret Openhouder', status: 'in-use' },
           { pcId: '2', memberId: 111222, name: 'Unregistered Visitor Person', status: 'in-use' },
+          { pcId: '3', memberId: 111222, name: 'Locked Away', status: 'locked', lockedAt: new Date().toISOString() },
         ],
       });
     expect(ingest.status).toBe(204);
@@ -95,9 +105,14 @@ describe('GET /api/public/info/pc-usage', () => {
     expect(res.body).toContainEqual(
       expect.objectContaining({ pcId: '2', users: [{ symbol: '' }] }),
     );
+    // The lock timestamp stays readable so the page can show how long a seat has been locked.
+    expect(res.body).toContainEqual(
+      expect.objectContaining({ pcId: '3', status: 'locked', lockedAt: expect.any(String) }),
+    );
     const serialized = JSON.stringify(res.body);
     expect(serialized).not.toContain('Secret Openhouder');
     expect(serialized).not.toContain('Unregistered Visitor Person');
+    expect(serialized).not.toContain('Locked Away');
     expect(serialized).not.toContain('memberId');
     expect(serialized).not.toContain('name');
   });

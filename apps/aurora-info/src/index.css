@@ -1,6 +1,43 @@
-@import 'https://fonts.googleapis.com/css?family=Raleway:700,400';
+@import 'https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap';
 @import 'tailwindcss';
 
-.font-raleway {
-  font-family: 'Raleway', sans-serif;
+.font-roboto {
+  font-family: 'Roboto', sans-serif;
+}
+
+/* Legacy status dots, matching the old app.main.css palette. */
+.pc_status_color {
+  width: 12px;
+  height: 12px;
+  border-radius: 30px;
+  background: #ffffff;
+}
+
+.pc_free {
+  background: #96ed91;
+}
+.pc_remote {
+  background: rgb(0, 120, 215);
+}
+.pc_offline {
+  background: rgb(120, 120, 120);
+}
+.pc_locked {
+  background: #f39c12;
+}
+.pc_inuse {
+  background: #f29191;
+}
+
+@keyframes blinker {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.1;
+  }
+}
+.pc_locked_long {
+  background: #f39c12;
+  animation: blinker 1.5s ease-in infinite alternate;
 }
