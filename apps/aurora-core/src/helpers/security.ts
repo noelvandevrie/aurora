@@ -15,6 +15,7 @@ export enum SecurityGroup {
 export enum SecurityNames {
   LOCAL = 'local',
   INTEGRATION = 'integration',
+  PUBLIC = 'public',
 }
 
 /**

@@ -24,6 +24,15 @@ services:
       - posters:/usr/src/app/data/posters
       - local-posters:/usr/src/app/data/local-posters
       - audio:/usr/src/app/data/audio
+  info:
+    build: ../aurora-info
+    image: ghcr.io/gewis/aurora/info:latest
+    restart: 'unless-stopped'
+    networks:
+      - aurora
+    ports:
+      - '8082:80'
+
   core:
     build: .
     image: ghcr.io/gewis/aurora/core:latest

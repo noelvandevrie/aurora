@@ -7,6 +7,7 @@ const URLS = {
   core: process.env.VITE_CORE_URL ?? 'http://localhost:3000',
   client: 'http://localhost:8081',
   backoffice: 'http://localhost:8080',
+  info: 'http://localhost:8082',
 };
 
 function sh(cmd: string): string {
@@ -87,6 +88,7 @@ async function main() {
     Docs: `${URLS.core}/api-docs`,
     Client: key ? `${URLS.client}?key=${key}` : URLS.client,
     Backoffice: URLS.backoffice,
+    Info: URLS.info,
   };
 
   Object.entries(endpoints).forEach(([name, url]) => {
@@ -96,7 +98,7 @@ async function main() {
 
   await delay(1000);
   await Promise.all(
-    [endpoints.Docs, endpoints.Client, endpoints.Backoffice].map((url) => open(url)),
+    [endpoints.Docs, endpoints.Client, endpoints.Backoffice, endpoints.Info].map((url) => open(url)),
   );
 
   try {

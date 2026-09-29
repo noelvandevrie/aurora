@@ -37,6 +37,10 @@
 				"type": "apiKey",
 				"name": "x-api-key",
 				"in": "header"
+			},
+			"public": {
+				"type": "http",
+				"scheme": "bearer"
 			}
 		},
 		"schemas": {
@@ -3866,6 +3870,127 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"PublicResponsible": {
+				"description": "What the public status page may show about a responsible person: the name and\nthe role flags that drive the star/key icons, but never the membership number\nor the photo.",
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"isBoard": {
+						"type": "boolean"
+					},
+					"isCandidateBoard": {
+						"type": "boolean"
+					},
+					"isKeyholder": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"name",
+					"isBoard",
+					"isCandidateBoard",
+					"isKeyholder"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicRoomStatusResponse": {
+				"properties": {
+					"open": {
+						"type": "boolean"
+					},
+					"responsible": {
+						"items": {
+							"$ref": "#/components/schemas/PublicResponsible"
+						},
+						"type": "array"
+					},
+					"beerTime": {
+						"type": "string",
+						"nullable": true
+					},
+					"lastCall": {
+						"type": "string",
+						"nullable": true
+					},
+					"closedMessage": {
+						"type": "string",
+						"nullable": true
+					},
+					"coffeeStatus": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"open",
+					"responsible",
+					"beerTime",
+					"lastCall",
+					"closedMessage",
+					"coffeeStatus"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PcStatusType": {
+				"description": "Possible states of a physical or virtual PC in the GEWIS room.",
+				"enum": [
+					"free",
+					"in-use",
+					"locked",
+					"remote",
+					"offline",
+					"maintenance"
+				],
+				"type": "string"
+			},
+			"PublicPcUser": {
+				"description": "A logged-in user as the public page sees it: only the board/keyholder symbol.\nNo name and no membership number ever leaves the core.",
+				"properties": {
+					"symbol": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"symbol"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PublicPcStatusResponse": {
+				"properties": {
+					"pcId": {
+						"type": "string"
+					},
+					"status": {
+						"$ref": "#/components/schemas/PcStatusType"
+					},
+					"remote": {
+						"type": "boolean"
+					},
+					"lockedAt": {
+						"type": "string",
+						"nullable": true
+					},
+					"users": {
+						"items": {
+							"$ref": "#/components/schemas/PublicPcUser"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"pcId",
+					"status",
+					"remote",
+					"lockedAt",
+					"users"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"WeatherResponse": {
 				"properties": {
 					"station": {
@@ -4012,18 +4137,6 @@
 				],
 				"type": "object",
 				"additionalProperties": false
-			},
-			"PcStatusType": {
-				"description": "Possible states of a physical or virtual PC in the GEWIS room.",
-				"enum": [
-					"free",
-					"in-use",
-					"locked",
-					"remote",
-					"offline",
-					"maintenance"
-				],
-				"type": "string"
 			},
 			"PcStatusResponse": {
 				"properties": {
@@ -12331,6 +12444,63 @@
 						}
 					}
 				]
+			}
+		},
+		"/public/info/room-status": {
+			"get": {
+				"operationId": "GetPublicRoomStatus",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PublicRoomStatusResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Whether the association room is open, who is responsible, today's beer time\nand the coffee machine state.",
+				"tags": [
+					"Public"
+				],
+				"security": [
+					{
+						"public": []
+					}
+				],
+				"parameters": []
+			}
+		},
+		"/public/info/pc-usage": {
+			"get": {
+				"operationId": "GetPublicPcUsage",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"items": {
+										"$ref": "#/components/schemas/PublicPcStatusResponse"
+									},
+									"type": "array"
+								}
+							}
+						}
+					}
+				},
+				"description": "Anonymized PC usage: per-PC state with board/keyholder symbols only.",
+				"tags": [
+					"Public"
+				],
+				"security": [
+					{
+						"public": []
+					}
+				],
+				"parameters": []
 			}
 		},
 		"/handler/screen/info/weather": {
