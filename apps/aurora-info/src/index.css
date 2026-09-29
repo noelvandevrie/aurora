@@ -1,42 +1,61 @@
 @import 'tailwindcss';
 
-.font-roboto {
-  font-family: 'Roboto', sans-serif;
-}
+/*
+ * Design tokens. Tailwind generates utilities from these (bg-card, text-muted,
+ * bg-free, ...); the dark palette below only overrides the variables, so every
+ * component follows the device's colour scheme without dark: variants.
+ */
+@theme {
+  --font-sans: 'Roboto', ui-sans-serif, system-ui, sans-serif;
 
-/* Legacy status dots, matching the old app.main.css palette. */
-.pc_status_color {
-  width: 12px;
-  height: 12px;
-  border-radius: 30px;
-  background: #ffffff;
-}
+  --color-page: #f1f3f5;
+  --color-card: #ffffff;
+  --color-ink: #1f2328;
+  --color-muted: #6b7280;
+  --color-line: #e5e7eb;
 
-.pc_free {
-  background: #96ed91;
-}
-.pc_remote {
-  background: rgb(0, 120, 215);
-}
-.pc_offline {
-  background: rgb(120, 120, 120);
-}
-.pc_locked {
-  background: #f39c12;
-}
-.pc_inuse {
-  background: #f29191;
-}
+  /* Banner backgrounds, dark enough for white text in both schemes. */
+  --color-open: #15803d;
+  --color-closed: #4b5563;
 
-@keyframes blinker {
-  from {
-    opacity: 1;
+  /* Status colours: same meaning as the legacy dots (free, busy, locked, remote, offline). */
+  --color-free: #22c55e;
+  --color-busy: #ef4444;
+  --color-locked: #f59e0b;
+  --color-remote: #3b82f6;
+  --color-offline: #9ca3af;
+
+  --animate-blink: blink 1.5s ease-in infinite alternate;
+
+  @keyframes blink {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0.15;
+    }
   }
-  to {
-    opacity: 0.1;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-page: #0f1115;
+    --color-card: #1a1d23;
+    --color-ink: #e6e8eb;
+    --color-muted: #9aa0a6;
+    --color-line: #2a2e35;
+    --color-closed: #3a404a;
+    --color-offline: #5f6670;
   }
 }
-.pc_locked_long {
-  background: #f39c12;
-  animation: blinker 1.5s ease-in infinite alternate;
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-blink {
+    animation: none;
+  }
+}
+
+html {
+  color-scheme: light dark;
+  background: var(--color-page);
 }

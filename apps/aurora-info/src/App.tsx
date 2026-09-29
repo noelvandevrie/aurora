@@ -1,5 +1,5 @@
 import './index.css';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { client } from '@gewis/aurora-api-client/client';
 import {
   getPublicPcUsage,
@@ -7,32 +7,39 @@ import {
   type PublicPcStatusResponse,
   type PublicRoomStatusResponse,
 } from '@gewis/aurora-api-client';
-import PcStatusGrid from './components/PcStatusGrid';
-import RoomStatusBlocks from './components/RoomStatusBlocks';
+import StatusBanner from './components/StatusBanner';
+import InfoTiles from './components/InfoTiles';
+import PcList from './components/PcList';
 
-// Same origin: the dev server (vite) and the production nginx both proxy /api
-// to core, so the browser never talks to core and CORS is moot.
+// Same origin: the dev server (vite) and the production nginx both proxy the
+// public endpoints to core, so the browser never talks to core and CORS is moot.
 client.setConfig({ baseUrl: '/api' });
 
 const POLL_MS = 30_000;
 
-interface InfoState {
-  roomStatus: PublicRoomStatusResponse | null;
-  pcUsage: PublicPcStatusResponse[] | null;
-  failed: boolean;
+interface Snapshot {
+  room: PublicRoomStatusResponse;
+  pcs: PublicPcStatusResponse[];
+  at: Date;
 }
 
-type Tab = 'room' | 'computers';
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+
+function Notice({ children }: { children: ReactNode }) {
+  return <section className="rounded-2xl bg-card p-6 text-center text-muted shadow-sm">{children}</section>;
+}
 
 /**
- * The public info page, styled after the legacy info.gewis.nl mobile site:
- * a "GEWIS Status" header, a Room/Computers tab bar and white content blocks.
- * Polls the anonymized public endpoints every 30 s; a failed poll keeps the
- * last data on screen.
+ * The public info page (info.gewis.nl): one screen with the room status and
+ * beer countdown up top, coffee and music tiles, then the computers. Polls the
+ * anonymized public endpoints every 30 s; a failed poll keeps the last data on
+ * screen and says how old it is.
  */
 export default function App() {
-  const [tab, setTab] = useState<Tab>('room');
-  const [info, setInfo] = useState<InfoState>({ roomStatus: null, pcUsage: null, failed: false });
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,12 +47,14 @@ export default function App() {
     const poll = async () => {
       try {
         const [room, pcs] = await Promise.all([getPublicRoomStatus(), getPublicPcUsage()]);
-        if (room.error || pcs.error) throw room.error ?? pcs.error;
-        if (!cancelled)
-          setInfo({ roomStatus: room.data ?? null, pcUsage: pcs.data ?? null, failed: false });
+        if (!room.data || !pcs.data) throw room.error ?? pcs.error;
+        if (!cancelled) {
+          setSnapshot({ room: room.data, pcs: pcs.data, at: new Date() });
+          setFailed(false);
+        }
       } catch {
         // Feature off, network blip, ...: keep showing the last known state.
-        if (!cancelled) setInfo((previous) => ({ ...previous, failed: true }));
+        if (!cancelled) setFailed(true);
       }
     };
 
@@ -59,57 +68,34 @@ export default function App() {
     };
   }, []);
 
-  const loading = info.roomStatus === null && info.pcUsage === null && !info.failed;
+  let body;
+  if (snapshot) {
+    body = (
+      <>
+        <StatusBanner status={snapshot.room} />
+        <InfoTiles status={snapshot.room} />
+        <PcList pcs={snapshot.pcs} />
+      </>
+    );
+  } else if (failed) {
+    body = <Notice>The status of GEWIS is unavailable right now.</Notice>;
+  } else {
+    body = <Notice>Loading…</Notice>;
+  }
 
   return (
-    <div className="min-h-screen bg-[#dddddd] font-roboto text-[14px] text-[#333333]">
-      <div id="header" className="bg-white text-center text-[16px] leading-[30px]">
-        <span className="text-[#333333]">GEWIS Status</span>
-      </div>
-
-      <div className="flex justify-center gap-4 border-b border-[#e8e8e8] bg-white text-[12px]">
-        <button
-          type="button"
-          onClick={() => setTab('room')}
-          className={`px-1 pt-2 pb-1 focus-visible:outline-none ${
-            tab === 'room'
-              ? 'border-b-[3px] border-[#46b98a] font-bold text-[#333333]'
-              : 'text-[#696969] hover:border-b-[3px] hover:border-[#46b98a] hover:text-[#46b98a]'
-          }`}
-        >
-          Room
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('computers')}
-          className={`px-1 pt-2 pb-1 focus-visible:outline-none ${
-            tab === 'computers'
-              ? 'border-b-[3px] border-[#46b98a] font-bold text-[#333333]'
-              : 'text-[#696969] hover:border-b-[3px] hover:border-[#46b98a] hover:text-[#46b98a]'
-          }`}
-        >
-          Computers
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="block mx-auto mt-10 max-w-[350px] bg-white p-6 text-center">Loading...</div>
-      ) : info.failed && info.roomStatus === null && info.pcUsage === null ? (
-        <div className="block mx-auto mt-10 max-w-[350px] bg-white p-6 text-center">
-          GEWIS info unavailable
-        </div>
-      ) : tab === 'room' ? (
-        <div className="mx-auto flex max-w-md flex-col items-center p-1" id="page_info">
-          {info.roomStatus && <RoomStatusBlocks status={info.roomStatus} />}
-        </div>
-      ) : (
-        <div className="mx-auto flex max-w-md flex-col items-center p-1" id="page_computers">
-          <div className="mt-2 w-full max-w-[350px] bg-white p-6 text-left">
-            <h1 className="mb-4 border-b-2 border-[#dddddd] pb-2 font-bold">Computers</h1>
-            <PcStatusGrid pcs={info.pcUsage} />
-          </div>
-        </div>
-      )}
+    <div className="min-h-screen bg-page font-sans text-ink antialiased">
+      <main className="mx-auto flex max-w-md flex-col gap-3 px-4 pt-6 pb-10">
+        <header className="flex items-baseline justify-between px-1">
+          <h1 className="text-lg font-bold">GEWIS Status</h1>
+          {snapshot && (
+            <span className={`text-xs ${failed ? 'text-busy' : 'text-muted'}`}>
+              {failed ? `Offline · data from ${formatTime(snapshot.at)}` : `Updated ${formatTime(snapshot.at)}`}
+            </span>
+          )}
+        </header>
+        {body}
+      </main>
     </div>
   );
 }
