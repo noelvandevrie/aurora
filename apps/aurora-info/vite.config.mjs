@@ -15,6 +15,9 @@ export default defineConfig({
         target: coreUrl,
         changeOrigin: true,
         secure: false,
+        // Append the visitor's (campus) IP as X-Forwarded-For so the core can
+        // apply the legacy 131.155.* rule for the "Currently playing" string.
+        xfwd: true,
       },
     },
   },
