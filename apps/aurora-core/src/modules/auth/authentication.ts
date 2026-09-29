@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { HttpApiException, HttpStatusCode } from '../../helpers/custom-error';
 import { AuthUser } from './auth-user';
-import { SecurityGroup, SecurityNames } from '../../helpers/security';
+import { SecurityGroup } from '../../helpers/security';
 
 /**
  * Express middleware to authenticate the user
@@ -45,8 +45,6 @@ export async function expressAuthentication(
     }
 
     throw new HttpApiException(HttpStatusCode.Forbidden);
-  } else if (securityName === SecurityNames.PUBLIC) {
-    return request.user ?? { id: 'public', name: 'Public visitor', roles: [] };
   }
   throw new HttpApiException(HttpStatusCode.InternalServerError, 'Unknown security scheme.');
 }

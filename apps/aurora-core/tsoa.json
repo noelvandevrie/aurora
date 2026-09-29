@@ -26,10 +26,6 @@
         "type": "apiKey",
         "name": "x-api-key",
         "in": "header"
-      },
-      "public": {
-        "type": "http",
-        "scheme": "bearer"
       }
     },
     "outputDirectory": "../../libs/aurora-api-client",

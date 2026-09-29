@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { RoomStatusResponse } from '@gewis/aurora-api-client';
-import RoomStatusWidget, { nextBeerTime } from './RoomStatusWidget';
+import { nextBeerTime } from '@gewis/aurora-api-client/beer-time';
+import RoomStatusWidget from './RoomStatusWidget';
 
 const base: RoomStatusResponse = {
   open: true,

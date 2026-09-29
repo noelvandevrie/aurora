@@ -1,7 +1,7 @@
+import { nextBeerTime } from '@gewis/aurora-api-client/beer-time';
 import { remainingInWords } from '../countdown';
 import { sBool, WidgetSettings } from '../settings';
 import useSecondTick from '../useSecondTick';
-import { nextBeerTime } from './RoomStatusWidget';
 import BeerGlass, { FOAM_HEIGHT } from './BeerGlass';
 
 interface Props {

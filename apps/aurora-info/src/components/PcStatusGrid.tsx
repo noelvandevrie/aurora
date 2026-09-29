@@ -5,38 +5,38 @@ interface Props {
   pcs: PublicPcStatusResponse[] | null;
 }
 
-/** Locks of 30 minutes or longer get the blinking attention dot (legacy rule). */
+/** Locks of 30 minutes or longer get the blinking dot (legacy rule). */
 const LONG_LOCK_MINUTES = 30;
 
 const VDESKTOP_PC_ID = 'vdesktop';
 
-const DOT_MAP: Record<string, string> = {
-  [PcStatusType.FREE]: 'pc_free',
-  [PcStatusType.IN_USE]: 'pc_inuse',
-  remote: 'pc_remote',
-  [PcStatusType.LOCKED]: 'pc_locked',
-  [PcStatusType.OFFLINE]: 'pc_offline',
-  [PcStatusType.MAINTENANCE]: 'pc_offline',
-};
+function lockMinutes(lockedAt: string): number {
+  return Math.max(0, Math.floor((Date.now() - Date.parse(lockedAt)) / 60_000));
+}
 
-/**
- * The dot class for a PC: remote beats in-use, a fresh lock becomes orange
- * and a long lock starts blinking.
- */
-function pcDotClass(pc: { status: PcStatusType; remote: boolean; lockedAt: string | null }): {
-  dot: string;
-  lockedFor: string | null;
-} {
-  if (pc.lockedAt) {
-    const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(pc.lockedAt)) / 60_000));
-    const lockedFor = minutes >= 60 ? `${Math.floor(minutes / 60)}h` : `${minutes}m`;
-    return {
-      dot: minutes >= LONG_LOCK_MINUTES ? 'pc_locked_long' : 'pc_locked',
-      lockedFor,
-    };
+/** Dot and text for one PC, following the legacy precedence: dead, free, locked, remote, in use. */
+function describe(pc: PublicPcStatusResponse): { dot: string; text: string } {
+  if (pc.status === PcStatusType.OFFLINE) return { dot: 'pc_offline', text: 'Offline' };
+  if (pc.status === PcStatusType.MAINTENANCE) return { dot: 'pc_offline', text: 'Maintenance' };
+
+  if (pc.pcId === VDESKTOP_PC_ID) {
+    const n = pc.users.length;
+    if (n === 0) return { dot: 'pc_free', text: 'Free' };
+    const symbols = pc.users.map((u) => u.symbol).filter(Boolean).join(' ');
+    return { dot: 'pc_remote', text: `${n} ${n === 1 ? 'session' : 'sessions'}${symbols ? ` ${symbols}` : ''}` };
   }
-  if (pc.remote) return { dot: DOT_MAP.remote, lockedFor: null };
-  return { dot: DOT_MAP[pc.status] ?? 'pc_offline', lockedFor: null };
+
+  if (pc.users.length === 0 || pc.status === PcStatusType.FREE) return { dot: 'pc_free', text: 'Free' };
+
+  // Role symbols only (★ board, 🔑 keyholder, …); 👤 for anybody else. Never a name.
+  const who = pc.users.map((u) => u.symbol || '👤').join(' ');
+  if (pc.lockedAt) {
+    const minutes = lockMinutes(pc.lockedAt);
+    const age = minutes >= 60 ? `${Math.floor(minutes / 60)}h` : `${minutes}m`;
+    return { dot: minutes >= LONG_LOCK_MINUTES ? 'pc_locked_long' : 'pc_locked', text: `${who} (locked for ${age})` };
+  }
+  if (pc.remote) return { dot: 'pc_remote', text: `${who} (remote)` };
+  return { dot: 'pc_inuse', text: who };
 }
 
 export default function PcStatusGrid({ pcs }: Props) {
@@ -44,42 +44,12 @@ export default function PcStatusGrid({ pcs }: Props) {
 
   return (
     <div className="flex flex-col">
-      {pcs.map((pc) => {
-        const { dot, lockedFor } = pcDotClass(pc);
-        // Role symbols only: board ★ / keyholder 🔑; no names ever live here.
-        const symbols = pc.users.map((user) => user.symbol);
-        const symbolText =
-          pc.pcId === VDESKTOP_PC_ID
-            ? `${symbols.length} sessions`
-            : symbols.map((symbol) => symbol || '👤').join(' ');
-
+      {pcs.map((pc, index) => {
+        const { dot, text } = describe(pc);
         return (
-          <div key={pc.pcId} className="pb-1">
-            <div className="flex items-baseline gap-2">
-              <span className="flex items-center gap-2">
-                <StatusDot kind={dot} />
-                <span className="font-medium">
-                  {pc.pcId === VDESKTOP_PC_ID
-                    ? 'Virtual desktop'
-                    : `PC ${pc.pcId}`}
-                </span>
-              </span>
-              <span className="text-[#696969]">
-                {pc.status === PcStatusType.OFFLINE
-                  ? '· offline'
-                  : pc.status === PcStatusType.MAINTENANCE
-                    ? '· maintenance'
-                    : pc.status === PcStatusType.FREE
-                      ? '· Free'
-                      : lockedFor
-                        ? `· locked for ${lockedFor}`
-                        : pc.remote
-                          ? '· in use (remote)'
-                          : symbolText
-                            ? `· ${symbolText}`
-                            : ''}
-              </span>
-            </div>
+          <div key={pc.pcId}>
+            {index > 0 && <hr className="my-2 border border-[#dddddd]" />}
+            <StatusDot kind={dot} /> {pc.pcId === VDESKTOP_PC_ID ? 'VDESKTOP' : `PC ${pc.pcId}`}: {text}
           </div>
         );
       })}

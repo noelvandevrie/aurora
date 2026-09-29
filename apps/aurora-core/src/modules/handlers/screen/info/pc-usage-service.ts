@@ -49,7 +49,7 @@ export interface PcStatusResponse {
 const DEFAULT_STALE_MINUTES = 5;
 
 /** Number of physical PCs in the room (ids "1".."10"); anything else is virtual. */
-const PHYSICAL_PC_COUNT = 10;
+export const PHYSICAL_PC_COUNT = 10;
 
 /**
  * Owns the PC-usage state. A single poster instance keeps this up to date by
@@ -232,15 +232,14 @@ export default class PcUsageService {
     }
     const removedIds = new Set(removable.map((pc) => pc.pcId));
 
-    const seen = pcs.filter((pc) => !removedIds.has(pc.pcId));
-    const result = PcUsageService.synthesizeMissingPersistent(
-      seen.map((pc) => {
+    return pcs
+      .filter((pc) => !removedIds.has(pc.pcId))
+      .map((pc) => {
         const status = this.isStale(pc) ? PcStatusType.OFFLINE : pc.status;
-        // A PC with no active session shows nobody.
-        const active =
-          status === PcStatusType.OFFLINE || status === PcStatusType.MAINTENANCE
-            ? []
-            : (pc.users ?? []);
+        // A dead machine has no session: nobody on it and no lock, otherwise its
+        // last lock time would keep "aging" on the map.
+        const dead = status === PcStatusType.OFFLINE || status === PcStatusType.MAINTENANCE;
+        const active = dead ? [] : (pc.users ?? []);
         return {
           pcId: pc.pcId,
           users: active.map((user) => ({
@@ -249,37 +248,11 @@ export default class PcUsageService {
             symbol: PcUsageService.deriveSymbol(user.memberId, keyholders),
           })),
           remote: pc.remote,
-          lockedAt: pc.lockedAt ? pc.lockedAt.toISOString() : null,
+          lockedAt: !dead && pc.lockedAt ? pc.lockedAt.toISOString() : null,
           status,
         };
-      }),
-    );
-    return result.sort((a, b) => PcUsageService.comparePcId(a.pcId, b.pcId));
-  }
-
-  /**
-   * The physical PCs and the shared virtual desktop exist even when nobody has
-   * ever reported them (fresh deployment, wiped table): the legacy page always
-   * listed every machine, reading them as offline. Returns offline stubs for
-   * all persistent ids that are not among `reported`.
-   */
-  public static synthesizeMissingPersistent(reported: PcStatusResponse[]): PcStatusResponse[] {
-    const stubs = PcUsageService.persistentPcIds()
-      .filter((pcId) => !reported.some((pc) => pc.pcId === pcId))
-      .sort((a, b) => PcUsageService.comparePcId(a, b))
-      .map((pcId) => ({
-        pcId,
-        users: [],
-        remote: false,
-        lockedAt: null,
-        status: PcStatusType.OFFLINE,
-      }));
-    return [...stubs, ...reported];
-  }
-
-  /** All persistent PCs: the physical machines "1".."10" plus the shared virtual desktop. */
-  private static persistentPcIds(): string[] {
-    return [...Array.from({ length: PHYSICAL_PC_COUNT }, (_, i) => String(i + 1)), VDESKTOP_PC_ID];
+      })
+      .sort((a, b) => PcUsageService.comparePcId(a.pcId, b.pcId));
   }
 
   /**

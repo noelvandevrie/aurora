@@ -27,6 +27,11 @@
       "development": "./src/api-client/schemas.gen.ts",
       "types": "./dist/api-client/schemas.gen.d.ts",
       "default": "./dist/api-client/schemas.gen.js"
+    },
+    "./beer-time": {
+      "development": "./src/shared/beer-time.ts",
+      "types": "./dist/shared/beer-time.d.ts",
+      "default": "./dist/shared/beer-time.js"
     }
   },
   "files": [

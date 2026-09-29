@@ -37,10 +37,6 @@
 				"type": "apiKey",
 				"name": "x-api-key",
 				"in": "header"
-			},
-			"public": {
-				"type": "http",
-				"scheme": "bearer"
 			}
 		},
 		"schemas": {
@@ -3883,10 +3879,6 @@
 						"type": "string",
 						"nullable": true
 					},
-					"closedMessage": {
-						"type": "string",
-						"nullable": true
-					},
 					"coffeeStatus": {
 						"type": "number",
 						"format": "double"
@@ -3894,14 +3886,13 @@
 					"playingSong": {
 						"type": "string",
 						"nullable": true,
-						"description": "Display string for whatever the board account is currently playing, or null\nwhen unknown. Calculated once by PlayingSongService; TU/e visitors get the\nartist and title, everybody else a generic \"playing music\"."
+						"description": "Display string for whatever the room is currently playing, or null when\nnothing plays. TU/e visitors get the artist and title, everybody else a\ngeneric \"playing music\"."
 					}
 				},
 				"required": [
 					"open",
 					"beerTime",
 					"lastCall",
-					"closedMessage",
 					"coffeeStatus",
 					"playingSong"
 				],
@@ -12435,15 +12426,11 @@
 						}
 					}
 				},
-				"description": "Whether the association room is open, today's beer time, the coffee machine\nstate and what is currently playing. Responsibles are deliberately NOT\nexposed: that information was not public before either.",
+				"description": "Whether the association room is open, today's beer time, the coffee machine\nstate and what is currently playing.",
 				"tags": [
 					"Public"
 				],
-				"security": [
-					{
-						"public": []
-					}
-				],
+				"security": [],
 				"parameters": []
 			}
 		},
@@ -12469,11 +12456,7 @@
 				"tags": [
 					"Public"
 				],
-				"security": [
-					{
-						"public": []
-					}
-				],
+				"security": [],
 				"parameters": []
 			}
 		},

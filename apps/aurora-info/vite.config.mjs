@@ -10,14 +10,19 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 8082,
+    // Mirrors docker/nginx.conf: only the two public endpoints reach core, and
+    // the visitor address is passed as X-Real-IP (overwritten, not appended).
     proxy: {
-      '/api': {
+      '^/api/public/info/(room-status|pc-usage)$': {
         target: coreUrl,
         changeOrigin: true,
         secure: false,
-        // Append the visitor's (campus) IP as X-Forwarded-For so the core can
-        // apply the legacy 131.155.* rule for the "Currently playing" string.
-        xfwd: true,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            proxyReq.removeHeader('x-forwarded-for');
+            proxyReq.setHeader('x-real-ip', req.socket.remoteAddress ?? '');
+          });
+        },
       },
     },
   },

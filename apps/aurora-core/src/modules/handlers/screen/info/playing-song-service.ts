@@ -14,7 +14,9 @@ export default class PlayingSongService {
   public getPlayingSong(visitorIp: string | null): string | null {
     const current = SpotifyTrackHandler.getInstance().getCurrentlyPlaying();
     if (!current) return null;
-    const insideTudE = visitorIp !== null && visitorIp.startsWith(TU_E_PREFIX);
+    // Node reports IPv4 peers on dual-stack sockets as "::ffff:a.b.c.d".
+    const ip = visitorIp?.replace(/^::ffff:/, '') ?? null;
+    const insideTudE = ip !== null && ip.startsWith(TU_E_PREFIX);
     return insideTudE ? `♫ ${current.artist} - ${current.title}` : '♫ Playing music';
   }
 }

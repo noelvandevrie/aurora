@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
+import { nextBeerTime } from '@gewis/aurora-api-client/beer-time';
 import { formatMmSs } from '../countdown';
 import useSecondTick from '../useSecondTick';
-import { nextBeerTime } from './RoomStatusWidget';
 import DigitalTime from './DigitalTime';
 
 interface Props {

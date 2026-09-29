@@ -2,38 +2,29 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GEWIS Status</title>
+    <meta name="description" content="See the status of GEWIS on your smartphone." />
+
+    <meta property="og:title" content="GEWIS Status" />
+    <meta property="og:description" content="See the status of GEWIS on your smartphone." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GEWIS Status" />
+    <meta property="og:url" content="https://info.gewis.nl/" />
+    <meta property="og:image" content="https://info.gewis.nl/android-chrome-512x512.png" />
+
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Raleway:wght@700&display=swap"
-      rel="stylesheet"
-    />
-
-    <title>GEWIS Info</title>
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="GEWIS" />
+    <meta name="format-detection" content="telephone=no" />
   </head>
-  <body style="margin: 0">
-    <noscript>You need to enable JavaScript to run this app.</noscript>
+  <body style="margin: 0; background: #dddddd">
+    <noscript>You need to enable JavaScript to see the status of GEWIS.</noscript>
+    <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
-    <div id="root">
-      <div
-        style="
-          width: 100vw;
-          height: 100vh;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          font-family: Raleway, sans-serif;
-          font-size: 6rem;
-          font-weight: 700;
-        "
-      >
-        Loading application...
-      </div>
-    </div>
   </body>
 </html>
