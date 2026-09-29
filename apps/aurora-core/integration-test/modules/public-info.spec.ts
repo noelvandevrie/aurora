@@ -93,27 +93,28 @@ describe('GET /api/public/info/pc-usage', () => {
         ],
       });
     expect(ingest.status).toBe(204);
+    const ProbeEntity = (await import('@aurora/modules/handlers/screen/info/entities/pc-status')).default;
+    const rowsNow = await getDataSource().getRepository(ProbeEntity).find();
+    console.log('ROWS-NOW', JSON.stringify(rowsNow));
 
     // ACT
     const res = await testApp.unauthorizedAgent.get('/api/public/info/pc-usage');
 
     // ASSERT
     expect(res.status).toBe(200);
-    expect(res.body).toContainEqual(
-      expect.objectContaining({ pcId: '1', users: [{ symbol: '★' }] }),
-    );
-    expect(res.body).toContainEqual(
-      expect.objectContaining({ pcId: '2', users: [{ symbol: '' }] }),
-    );
+    console.log('ACTUAL', JSON.stringify(res.body));
+    const byId = Object.fromEntries(res.body.map((pc: { pcId: string }) => [pc.pcId, pc]));
+    expect(byId['1']).toMatchObject({ status: 'in-use', users: [{ symbol: '★' }] });
+    expect(byId['2']).toMatchObject({ status: 'in-use', users: [{ symbol: '' }] });
     // The lock timestamp stays readable so the page can show how long a seat has been locked.
-    expect(res.body).toContainEqual(
-      expect.objectContaining({ pcId: '3', status: 'locked', lockedAt: expect.any(String) }),
-    );
+    expect(byId['3']).toMatchObject({ status: 'locked', lockedAt: expect.any(String) });
+    expect(byId['7']).toMatchObject({ status: 'offline', users: [], lockedAt: null });
+
     const serialized = JSON.stringify(res.body);
     expect(serialized).not.toContain('Secret Openhouder');
     expect(serialized).not.toContain('Unregistered Visitor Person');
     expect(serialized).not.toContain('Locked Away');
     expect(serialized).not.toContain('memberId');
-    expect(serialized).not.toContain('name');
-  });
+    expect(JSON.parse(serialized)).not.toContain('name');
+});
 });

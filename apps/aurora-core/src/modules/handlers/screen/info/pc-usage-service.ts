@@ -232,9 +232,9 @@ export default class PcUsageService {
     }
     const removedIds = new Set(removable.map((pc) => pc.pcId));
 
-    return pcs
-      .filter((pc) => !removedIds.has(pc.pcId))
-      .map((pc) => {
+    const seen = pcs.filter((pc) => !removedIds.has(pc.pcId));
+    const result = PcUsageService.synthesizeMissingPersistent(
+      seen.map((pc) => {
         const status = this.isStale(pc) ? PcStatusType.OFFLINE : pc.status;
         // A PC with no active session shows nobody.
         const active =
@@ -252,8 +252,34 @@ export default class PcUsageService {
           lockedAt: pc.lockedAt ? pc.lockedAt.toISOString() : null,
           status,
         };
-      })
-      .sort((a, b) => PcUsageService.comparePcId(a.pcId, b.pcId));
+      }),
+    );
+    return result.sort((a, b) => PcUsageService.comparePcId(a.pcId, b.pcId));
+  }
+
+  /**
+   * The physical PCs and the shared virtual desktop exist even when nobody has
+   * ever reported them (fresh deployment, wiped table): the legacy page always
+   * listed every machine, reading them as offline. Returns offline stubs for
+   * all persistent ids that are not among `reported`.
+   */
+  public static synthesizeMissingPersistent(reported: PcStatusResponse[]): PcStatusResponse[] {
+    const stubs = PcUsageService.persistentPcIds()
+      .filter((pcId) => !reported.some((pc) => pc.pcId === pcId))
+      .sort((a, b) => PcUsageService.comparePcId(a, b))
+      .map((pcId) => ({
+        pcId,
+        users: [],
+        remote: false,
+        lockedAt: null,
+        status: PcStatusType.OFFLINE,
+      }));
+    return [...stubs, ...reported];
+  }
+
+  /** All persistent PCs: the physical machines "1".."10" plus the shared virtual desktop. */
+  private static persistentPcIds(): string[] {
+    return [...Array.from({ length: PHYSICAL_PC_COUNT }, (_, i) => String(i + 1)), VDESKTOP_PC_ID];
   }
 
   /**
